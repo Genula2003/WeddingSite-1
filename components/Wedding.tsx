@@ -14,13 +14,22 @@ import {
   ArrowDown,
   Flower2,
   Navigation,
-  Sparkles,
   Volume2,
   VolumeX,
 } from 'lucide-react';
 import BackgroundAnimation from './BackgroundAnimation';
 
-type Guest = { name: string; token: string; seats: number; status: string; attending_count: number };
+export type Guest = {
+  name: string;
+  household?: string | null;
+  token: string;
+  seats: number;
+  status: string;
+  attending_count: number;
+  attendee_names?: string[];
+  guest_message?: string | null;
+};
+
 const mapUrl = 'https://maps.app.goo.gl/gwr9NAbTvqUno7ePA?g_st=iw';
 
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
@@ -44,6 +53,7 @@ export default function Wedding({ guest }: { guest?: Guest }) {
   const [time, setTime] = useState([0, 0, 0, 0]);
   const [status, setStatus] = useState(guest?.status || 'pending');
   const [count, setCount] = useState(guest?.attending_count || 1);
+  const [attendeeNames, setAttendeeNames] = useState<string[]>(guest?.attendee_names || []);
   const [message, setMessage] = useState('');
   const [feedback, setFeedback] = useState('');
   const [busy, setBusy] = useState(false);
@@ -53,9 +63,7 @@ export default function Wedding({ guest }: { guest?: Guest }) {
     if (audioRef.current) {
       audioRef.current.play().then(() => {
         setIsPlaying(true);
-      }).catch((err) => {
-        console.log('Autoplay prevented:', err);
-      });
+      }).catch(() => {});
     }
   };
 
@@ -71,7 +79,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
     }
   };
 
-  // Smooth scroll progress
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -79,7 +86,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
     restDelta: 0.001,
   });
 
-  // Countdown timer to Dec 03, 2026 07:30 AM
   useEffect(() => {
     const tick = () => {
       const ms = Math.max(0, new Date('2026-12-03T07:30:00+05:30').getTime() - Date.now());
@@ -103,17 +109,31 @@ export default function Wedding({ guest }: { guest?: Guest }) {
     }
   };
 
+  const handleNameChange = (index: number, val: string) => {
+    const next = [...attendeeNames];
+    next[index] = val;
+    setAttendeeNames(next);
+  };
+
   async function respond(next: 'accepted' | 'declined') {
     if (!guest) return;
     setBusy(true);
     try {
+      const finalCount = next === 'accepted' ? count : 0;
+      const filteredNames = next === 'accepted' ? attendeeNames.slice(0, count).filter(Boolean) : [];
+
       const res = await fetch('/api/rsvp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: guest.token, status: next, count: next === 'accepted' ? count : 0 }),
+        body: JSON.stringify({
+          token: guest.token,
+          status: next,
+          count: finalCount,
+          attendeeNames: filteredNames,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Failed to submit response');
       setStatus(next);
       setFeedback(
         next === 'accepted'
@@ -137,7 +157,7 @@ export default function Wedding({ guest }: { guest?: Guest }) {
         body: JSON.stringify({ token: guest.token, message }),
       });
       const data = await res.json();
-      if (!res.ok) throw Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Failed to send message');
       setMessage('');
       setFeedback('Your lovely message has been sent. Thank you!');
     } catch (e) {
@@ -149,7 +169,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
 
   return (
     <>
-      {/* Background Wedding Audio */}
       <audio
         ref={audioRef}
         src="/audio/wedding-melody.mp3"
@@ -157,7 +176,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
         preload="auto"
       />
 
-      {/* Floating Music Controller */}
       {opened && (
         <motion.button
           className={`floating-music-btn ${isPlaying ? 'playing' : ''}`}
@@ -172,7 +190,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
         </motion.button>
       )}
 
-      {/* InviteMint-style Luxury Interactive Cover Screen */}
       <AnimatePresence mode="wait">
         {!opened && (
           <motion.div
@@ -187,7 +204,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
               transition: { duration: 0.85, ease: [0.77, 0, 0.175, 1] },
             }}
           >
-            {/* Top Floral Garland Arch */}
             <div className="cover-floral-arch-wrap" aria-hidden="true">
               <img
                 src="/images/floral-arch.png"
@@ -196,10 +212,8 @@ export default function Wedding({ guest }: { guest?: Guest }) {
               />
             </div>
 
-            {/* Ambient Petals Canvas */}
             <BackgroundAnimation />
 
-            {/* Cover Header */}
             <div className="cover-header">
               <div className="cover-eyebrow">A CELEBRATION OF LOVE</div>
               <h1 className="cover-title">
@@ -210,7 +224,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
               </div>
             </div>
 
-            {/* Center Traditional Couple Illustration */}
             <div className="cover-couple-center">
               <div className="cover-couple-halo" aria-hidden="true" />
               <img
@@ -220,7 +233,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
               />
             </div>
 
-            {/* Bottom "OPEN INVITATION" Card */}
             <div className="cover-action-wrap">
               <motion.button
                 className="cover-open-btn"
@@ -244,13 +256,10 @@ export default function Wedding({ guest }: { guest?: Guest }) {
       </AnimatePresence>
 
       <main className="wedding-main-page">
-        {/* Golden Scroll Progress Bar */}
         <motion.div className="scroll-progress-bar" style={{ scaleX }} />
 
-        {/* Ambient Subtle Petal Drift Background */}
         <BackgroundAnimation />
 
-        {/* Header Navigation */}
         <motion.header
           className="nav"
           initial={{ opacity: 0, y: -25 }}
@@ -292,7 +301,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </button>
         </motion.header>
 
-        {/* 1. CINEMATIC VIDEO HERO SECTION */}
         <section className="hero" id="home">
           <video autoPlay muted loop playsInline poster="/hero-poster.jpg">
             <source src="/hero.mp4" type="video/mp4" />
@@ -362,7 +370,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </motion.a>
         </section>
 
-        {/* 2. COUNTDOWN SECTION (MATCHING HERO AESTHETIC) */}
         <section className="section countdown-section" id="countdown">
           <Reveal>
             <div className="countdown-eyebrow">COUNTDOWN TO OUR WEDDING</div>
@@ -388,7 +395,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </Reveal>
         </section>
 
-        {/* 3. THE HAPPY COUPLE SECTION */}
         <section className="section couple" id="couple">
           <Reveal>
             <div className="eyebrow">THE HAPPY COUPLE</div>
@@ -396,7 +402,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
             <div className="flourish">── ♥ ──</div>
 
             <div className="couple-grid">
-              {/* Groom: Chathura */}
               <motion.div
                 className="person-card groom-card"
                 initial={{ opacity: 0, x: -50 }}
@@ -420,7 +425,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
                 </p>
               </motion.div>
 
-              {/* Interlocking Rings Centerpiece */}
               <motion.div
                 className="rings-connector"
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -440,7 +444,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
                 <span className="forever-text">FOREVER &amp; ALWAYS</span>
               </motion.div>
 
-              {/* Bride: Gimasha */}
               <motion.div
                 className="person-card bride-card"
                 initial={{ opacity: 0, x: 50 }}
@@ -467,7 +470,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </Reveal>
         </section>
 
-        {/* 4. WEDDING DETAILS & ITINERARY */}
         <section className="section details" id="details">
           <Reveal>
             <div className="eyebrow">WEDDING DETAILS</div>
@@ -525,11 +527,20 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </Reveal>
         </section>
 
-        {/* 5. RSVP SECTION */}
         <section className="section rsvp" id="rsvp">
           <Reveal>
             <div className="eyebrow">YOUR PRESENCE MATTERS</div>
-            <h2>Dear {guest?.name || 'Honored Guest'},</h2>
+            <h2>
+              {guest ? (
+                guest.household ? (
+                  <>Dear {guest.name} &amp; Family,</>
+                ) : (
+                  <>Dear {guest.name},</>
+                )
+              ) : (
+                <>Honored Guest,</>
+              )}
+            </h2>
             <div className="flourish">── ♥ ──</div>
             <p className="section-sub">
               We would be truly honored to have you with us on our special day. Please let us know if you will be
@@ -553,20 +564,39 @@ export default function Wedding({ guest }: { guest?: Guest }) {
                         ))}
                       </select>
                     </div>
-                    <button
-                      disabled={busy}
-                      className={`btn rsvp-accept ${status === 'accepted' ? 'selected' : ''}`}
-                      onClick={() => respond('accepted')}
-                    >
-                      <Check size={16} /> I'll Be There
-                    </button>
-                    <button
-                      disabled={busy}
-                      className={`btn outline rsvp-decline ${status === 'declined' ? 'selected' : ''}`}
-                      onClick={() => respond('declined')}
-                    >
-                      <X size={16} /> Unable to Attend
-                    </button>
+
+                    {guest.seats > 1 && count > 1 && (
+                      <div className="rsvp-names-group">
+                        <label className="rsvp-sublabel">Names of attending guests (optional):</label>
+                        {Array.from({ length: count - 1 }, (_, i) => (
+                          <input
+                            key={i}
+                            type="text"
+                            className="rsvp-name-input"
+                            placeholder={`Guest ${i + 2} name`}
+                            value={attendeeNames[i] || ''}
+                            onChange={(e) => handleNameChange(i, e.target.value)}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="rsvp-buttons-row">
+                      <button
+                        disabled={busy}
+                        className={`btn rsvp-accept ${status === 'accepted' ? 'selected' : ''}`}
+                        onClick={() => respond('accepted')}
+                      >
+                        <Check size={16} /> I'll Be There
+                      </button>
+                      <button
+                        disabled={busy}
+                        className={`btn outline rsvp-decline ${status === 'declined' ? 'selected' : ''}`}
+                        onClick={() => respond('declined')}
+                      >
+                        <X size={16} /> Unable to Attend
+                      </button>
+                    </div>
                   </div>
                   <p className="response-note">
                     Current response: <b>{status}</b>
@@ -581,7 +611,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </Reveal>
         </section>
 
-        {/* 6. WISHES GUESTBOOK */}
         <section className="section wishes" id="wishes">
           <Reveal>
             <div className="eyebrow">SEND US YOUR WISHES</div>
@@ -614,7 +643,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </Reveal>
         </section>
 
-        {/* 7. LOCATION & MAP SECTION */}
         <section className="section location" id="location">
           <div className="location-container">
             <div className="location-info-side">
@@ -664,7 +692,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </div>
         </section>
 
-        {/* 8. CONTACT SECTION */}
         <section className="section contact" id="contact">
           <Reveal>
             <div className="eyebrow">FOR ANY INQUIRIES</div>
@@ -693,7 +720,6 @@ export default function Wedding({ guest }: { guest?: Guest }) {
           </Reveal>
         </section>
 
-        {/* 9. FOOTER */}
         <footer className="wedding-footer">
           <div className="footer-content">
             <h2 className="footer-couple-names">Chathura &amp; Gimasha</h2>

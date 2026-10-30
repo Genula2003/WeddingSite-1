@@ -1,3 +1,40 @@
-import {NextRequest,NextResponse} from 'next/server';import db,{Guest} from '@/lib/db';import {requireAdmin} from '@/lib/auth';
-export async function GET(){const err=await requireAdmin();if(err)return err;return NextResponse.json(db.prepare('SELECT wishes.*,guests.name FROM wishes JOIN guests ON guests.id=wishes.guest_id ORDER BY wishes.id DESC').all())}
-export async function POST(req:NextRequest){const {token,message}=await req.json();const guest=db.prepare('SELECT * FROM guests WHERE token=?').get(String(token||'')) as Guest|undefined;const msg=String(message||'').trim();if(!guest)return NextResponse.json({error:'Invitation not found'},{status:404});if(!msg||msg.length>1000)return NextResponse.json({error:'Message must be 1–1000 characters'},{status:400});const total=(db.prepare('SELECT COUNT(*) as n FROM wishes WHERE guest_id=?').get(guest.id) as {n:number}).n;if(total>=5)return NextResponse.json({error:'Message limit reached'},{status:429});db.prepare('INSERT INTO wishes (guest_id,message) VALUES (?,?)').run(guest.id,msg);return NextResponse.json({ok:true})}
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedAdmin } from '@/lib/auth-service';
+import { submitGuestWish, listGuestWishes } from '@/lib/invitation-service';
+
+export async function GET() {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const wishes = await listGuestWishes();
+    return NextResponse.json(wishes);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to retrieve wishes';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const token = String(body.token || '').trim();
+    const message = String(body.message || '').trim();
+
+    if (!token) {
+      return NextResponse.json({ error: 'Token is required' }, { status: 400 });
+    }
+
+    if (!message || message.length > 1000) {
+      return NextResponse.json({ error: 'Message must be between 1 and 1000 characters' }, { status: 400 });
+    }
+
+    const wish = await submitGuestWish({ rawToken: token, message });
+    return NextResponse.json({ ok: true, success: true, wish });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to submit wish';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
