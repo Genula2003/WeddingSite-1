@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { StatCardSkeleton, RecentActivitySkeleton } from '@/components/SkeletonLoader';
 import {
   Users,
   Mail,
@@ -139,6 +140,10 @@ export default function AdminDashboardPage() {
       )}
 
       <div className="admin-stats-grid">
+        {loading ? (
+          <StatCardSkeleton count={9} />
+        ) : (
+          <>
         <div className="admin-stat-card">
           <div className="admin-stat-top">
             <span className="admin-stat-label">Total Invited Seats</span>
@@ -247,6 +252,8 @@ export default function AdminDashboardPage() {
             Actual headcount from accepted RSVPs
           </div>
         </div>
+          </>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
@@ -262,7 +269,9 @@ export default function AdminDashboardPage() {
             </Link>
           </div>
 
-          {stats?.recentEvents && stats.recentEvents.length > 0 ? (
+          {loading ? (
+            <RecentActivitySkeleton items={5} />
+          ) : stats?.recentEvents && stats.recentEvents.length > 0 ? (
             <div className="admin-timeline">
               {stats.recentEvents.map((evt) => {
                 const guestName = evt.invitation?.guest?.full_name || 'Guest';

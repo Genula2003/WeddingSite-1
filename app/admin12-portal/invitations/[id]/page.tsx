@@ -22,6 +22,7 @@ import {
   Mail,
 } from 'lucide-react';
 import type { InvitationWithDetails, InvitationEventType } from '@/lib/supabase/types';
+import { FormSkeleton } from '@/components/SkeletonLoader';
 
 export default function InvitationDetailsPage({
   params,
@@ -253,9 +254,15 @@ export default function InvitationDetailsPage({
   if (loading) {
     return (
       <AdminLayout>
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-          <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-          <p>Loading invitation record...</p>
+        <div className="admin-header-row">
+          <div>
+            <div className="skeleton-bar skeleton-shimmer" style={{ width: '140px', height: '14px', marginBottom: '10px' }} />
+            <div className="skeleton-bar skeleton-shimmer" style={{ width: '260px', height: '32px', marginBottom: '8px' }} />
+            <div className="skeleton-bar skeleton-shimmer" style={{ width: '200px', height: '14px' }} />
+          </div>
+        </div>
+        <div className="admin-card" style={{ padding: '32px' }}>
+          <FormSkeleton fields={5} />
         </div>
       </AdminLayout>
     );

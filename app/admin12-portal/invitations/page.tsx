@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { TableRowSkeleton } from '@/components/SkeletonLoader';
 import {
   Search,
   Plus,
@@ -218,7 +219,10 @@ export default function AdminInvitationsPage() {
               </tr>
             </thead>
             <tbody>
-              {invitations.map((inv) => {
+              {loading ? (
+                <TableRowSkeleton rows={pageSize} columns={7} />
+              ) : invitations.length > 0 ? (
+                invitations.map((inv) => {
                 const rsvp = inv.rsvp;
                 const rsvpState = rsvp?.attendance_status || 'pending';
                 return (
@@ -284,7 +288,14 @@ export default function AdminInvitationsPage() {
                     </td>
                   </tr>
                 );
-              })}
+              })
+              ) : (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '36px 12px', color: 'var(--text-muted)' }}>
+                    No invitations match the selected criteria.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
 

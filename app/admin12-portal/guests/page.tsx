@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { TableRowSkeleton } from '@/components/SkeletonLoader';
 import {
   Users,
   Search,
@@ -146,7 +147,10 @@ export default function AdminGuestsPage() {
               </tr>
             </thead>
             <tbody>
-              {guests.map((g) => {
+              {loading ? (
+                <TableRowSkeleton rows={pageSize} columns={6} />
+              ) : guests.length > 0 ? (
+                guests.map((g) => {
                 const invite = g.invitations && g.invitations[0];
                 const rsvp = invite?.rsvp;
                 const rsvpState = rsvp?.attendance_status || 'pending';
@@ -231,7 +235,14 @@ export default function AdminGuestsPage() {
                     </td>
                   </tr>
                 );
-              })}
+              })
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '36px 12px', color: 'var(--text-muted)' }}>
+                    No guest profiles found matching your search.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
 

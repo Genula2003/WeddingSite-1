@@ -30,12 +30,31 @@ export default function BackgroundAnimation() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
+    // Respect user's accessibility preference for reduced motion
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     const handleResize = () => {
       if (!canvas) return;
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
     };
     window.addEventListener('resize', handleResize);
+
+    // Track scroll velocity for realistic scrolling flower animation
+    let lastScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    let scrollVelocity = 0;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollY;
+      // Smoothly cap scroll impulse
+      scrollVelocity = Math.max(Math.min(delta * 0.12, 10), -10);
+      lastScrollY = currentScrollY;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     // Premium Creamy + Gold + Green Palette
     const creamyColors = [
@@ -45,18 +64,18 @@ export default function BackgroundAnimation() {
     ];
 
     const goldColors = [
-      'rgba(218, 175, 75, ',  // royal gold
+      'rgba(218, 175, 75, ', // royal gold
       'rgba(242, 206, 115, ', // warm luminous gold
       'rgba(255, 228, 160, ', // gold sparkle
     ];
 
     const greenColors = [
-      'rgba(34, 92, 58, ',    // deep royal emerald
-      'rgba(52, 115, 78, ',   // rich leaf green
-      'rgba(78, 138, 98, ',   // soft sage green
+      'rgba(34, 92, 58, ', // deep royal emerald
+      'rgba(52, 115, 78, ', // rich leaf green
+      'rgba(78, 138, 98, ', // soft sage green
     ];
 
-    const count = width < 768 ? 22 : 40;
+    const count = width < 768 ? 24 : 42;
     const particles: Particle[] = [];
 
     for (let i = 0; i < count; i++) {
@@ -76,14 +95,32 @@ export default function BackgroundAnimation() {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        radiusX: type === 'sparkle' ? Math.random() * 1.6 + 1 : type === 'leaf' ? Math.random() * 3 + 3 : Math.random() * 4.5 + 4,
-        radiusY: type === 'sparkle' ? Math.random() * 1.6 + 1 : type === 'leaf' ? Math.random() * 6 + 5 : Math.random() * 7.5 + 7,
+        radiusX:
+          type === 'sparkle'
+            ? Math.random() * 1.6 + 1
+            : type === 'leaf'
+            ? Math.random() * 3 + 3
+            : Math.random() * 4.5 + 4,
+        radiusY:
+          type === 'sparkle'
+            ? Math.random() * 1.6 + 1
+            : type === 'leaf'
+            ? Math.random() * 6 + 5
+            : Math.random() * 7.5 + 7,
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: (Math.random() - 0.5) * 0.016,
-        speedY: type === 'sparkle' ? Math.random() * 0.35 + 0.15 : Math.random() * 0.55 + 0.35,
+        speedY:
+          type === 'sparkle'
+            ? Math.random() * 0.35 + 0.15
+            : Math.random() * 0.55 + 0.35,
         swaySpeed: Math.random() * 0.015 + 0.008,
         swayOffset: Math.random() * Math.PI * 2,
-        opacity: type === 'leaf' ? Math.random() * 0.3 + 0.22 : type === 'sparkle' ? Math.random() * 0.5 + 0.35 : Math.random() * 0.45 + 0.3,
+        opacity:
+          type === 'leaf'
+            ? Math.random() * 0.3 + 0.22
+            : type === 'sparkle'
+            ? Math.random() * 0.5 + 0.35
+            : Math.random() * 0.45 + 0.3,
         color,
         type,
       });
@@ -95,28 +132,47 @@ export default function BackgroundAnimation() {
       ctx.clearRect(0, 0, width, height);
 
       // Subtle ambient glowing light gradient drifting in background
-      const ambientGlowX = width * 0.5 + Math.sin(frame * 0.005) * (width * 0.2);
-      const ambientGlowY = height * 0.4 + Math.cos(frame * 0.004) * (height * 0.15);
-      const ambientGrad = ctx.createRadialGradient(ambientGlowX, ambientGlowY, 10, ambientGlowX, ambientGlowY, width * 0.6);
+      const ambientGlowX =
+        width * 0.5 + Math.sin(frame * 0.005) * (width * 0.2);
+      const ambientGlowY =
+        height * 0.4 + Math.cos(frame * 0.004) * (height * 0.15);
+      const ambientGrad = ctx.createRadialGradient(
+        ambientGlowX,
+        ambientGlowY,
+        10,
+        ambientGlowX,
+        ambientGlowY,
+        width * 0.6
+      );
       ambientGrad.addColorStop(0, 'rgba(197, 155, 67, 0.035)'); // warm gold aura
       ambientGrad.addColorStop(0.5, 'rgba(34, 92, 58, 0.025)'); // gentle emerald aura
       ambientGrad.addColorStop(1, 'rgba(250, 246, 238, 0)');
       ctx.fillStyle = ambientGrad;
       ctx.fillRect(0, 0, width, height);
 
+      // Smoothly damp velocity back to zero
+      scrollVelocity *= 0.94;
+      if (Math.abs(scrollVelocity) < 0.01) scrollVelocity = 0;
+
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
-        // Motion physics: gentle fall with soft horizontal drift
-        p.y += p.speedY;
-        p.x += Math.sin(frame * p.swaySpeed + p.swayOffset) * 0.6;
-        p.rotation += p.rotationSpeed;
+        // Motion physics: gentle fall with soft horizontal drift + reactive scroll response
+        p.y += p.speedY + scrollVelocity;
+        p.x +=
+          Math.sin(frame * p.swaySpeed + p.swayOffset) * 0.65 +
+          scrollVelocity * 0.08;
+        p.rotation += p.rotationSpeed + scrollVelocity * 0.0015;
 
         // Reset particle smoothly when it moves past screen edges
         if (p.y > height + 25) {
           p.y = -20;
           p.x = Math.random() * width;
+        } else if (p.y < -25) {
+          p.y = height + 20;
+          p.x = Math.random() * width;
         }
+
         if (p.x > width + 25) p.x = -20;
         if (p.x < -25) p.x = width + 20;
 
@@ -168,14 +224,17 @@ export default function BackgroundAnimation() {
         ctx.restore();
       }
 
-      animId = requestAnimationFrame(render);
+      if (!prefersReducedMotion) {
+        animId = requestAnimationFrame(render);
+      }
     };
 
-    animId = requestAnimationFrame(render);
+    render();
 
     return () => {
-      cancelAnimationFrame(animId);
+      if (animId) cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import Wedding from '@/components/Wedding';
 import { resolvePublicInvitation } from '@/lib/invitation-service';
 
@@ -46,9 +47,9 @@ export default async function InvitePage({
             We could not locate an active invitation matching this link. Please check that the link was copied
             correctly or contact the couple directly.
           </p>
-          <a href="/" className="btn">
+          <Link href="/" className="btn">
             Visit Wedding Homepage
-          </a>
+          </Link>
         </div>
       </main>
     );
@@ -66,9 +67,9 @@ export default async function InvitePage({
             This personal invitation link has been updated or revoked. If you are expecting an invitation, please
             reach out to Chathura &amp; Gimasha to receive an updated link.
           </p>
-          <a href="/" className="btn">
+          <Link href="/" className="btn">
             Visit Wedding Homepage
-          </a>
+          </Link>
         </div>
       </main>
     );
@@ -86,9 +87,9 @@ export default async function InvitePage({
             Dear {invitation.guestName}, the RSVP period for this invitation has concluded. For any inquiries, please
             contact the couple directly.
           </p>
-          <a href="/" className="btn">
+          <Link href="/" className="btn">
             Visit Wedding Homepage
-          </a>
+          </Link>
         </div>
       </main>
     );
