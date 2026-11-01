@@ -53,15 +53,29 @@ export default function NewInvitationPage() {
   const [emailSentSuccess, setEmailSentSuccess] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
 
+  function normalizeInviteUrl(url: string): string {
+    if (!url) return '';
+    if (typeof window !== 'undefined' && window.location.origin) {
+      if (!window.location.origin.includes('localhost') && !window.location.origin.includes('127.0.0.1')) {
+        return url.replace(/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, window.location.origin);
+      }
+    }
+    return url;
+  }
+
   async function handleSendEmail() {
     if (!result || !email) return;
     setSendingEmail(true);
     setEmailError(null);
     try {
+      const urlToSend = normalizeInviteUrl(result.invitationUrl);
       const res = await fetch(`/api/invitations/${result.invitation.id}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitationUrl: result.invitationUrl }),
+        body: JSON.stringify({
+          invitationUrl: urlToSend,
+          baseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to dispatch email');
@@ -79,6 +93,7 @@ export default function NewInvitationPage() {
     setLoading(true);
 
     try {
+      const clientBaseUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
       const res = await fetch('/api/invitations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,6 +105,7 @@ export default function NewInvitationPage() {
           maxAttendees: Number(maxAttendees),
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
           privateNotes: privateNotes || null,
+          baseUrl: clientBaseUrl,
         }),
       });
 
@@ -97,6 +113,8 @@ export default function NewInvitationPage() {
       if (!res.ok) {
         throw new Error(data.error || 'Failed to create invitation');
       }
+
+      data.invitationUrl = normalizeInviteUrl(data.invitationUrl);
 
       setResult(data);
       const defaultMsg = `Dear ${data.guest.full_name}, you are warmly invited to celebrate the wedding of Chathura & Gimasha. Please find your personal invitation here: ${data.invitationUrl}`;
@@ -111,7 +129,8 @@ export default function NewInvitationPage() {
 
   async function handleCopyLink() {
     if (!result) return;
-    await navigator.clipboard.writeText(result.invitationUrl);
+    const urlToCopy = normalizeInviteUrl(result.invitationUrl);
+    await navigator.clipboard.writeText(urlToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
 
@@ -127,12 +146,13 @@ export default function NewInvitationPage() {
 
   async function handleNativeShare() {
     if (!result) return;
+    const urlToShare = normalizeInviteUrl(result.invitationUrl);
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Wedding Invitation | Chathura & Gimasha',
           text: `Dear ${result.guest.full_name}, you are warmly invited to celebrate the wedding of Chathura & Gimasha.`,
-          url: result.invitationUrl,
+          url: urlToShare,
         });
         await fetch(`/api/invitations/${result.invitation.id}/event`, {
           method: 'POST',
@@ -245,7 +265,7 @@ export default function NewInvitationPage() {
               color: 'var(--emerald-deep)',
             }}
           >
-            {result.invitationUrl}
+            {normalizeInviteUrl(result.invitationUrl)}
           </div>
 
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '24px' }}>
@@ -293,7 +313,7 @@ export default function NewInvitationPage() {
             )}
 
             <a
-              href={result.invitationUrl}
+              href={normalizeInviteUrl(result.invitationUrl)}
               target="_blank"
               rel="noopener noreferrer"
               className="admin-btn admin-btn-secondary"

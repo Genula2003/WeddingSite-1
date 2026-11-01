@@ -22,9 +22,9 @@ export function hashToken(token: string): string {
   return createHash('sha256').update(token.trim()).digest('hex');
 }
 
-export function buildInvitationUrl(token: string): string {
+export function buildInvitationUrl(token: string, baseUrl?: string): string {
   const config = getSupabaseEnvConfig();
-  const base = config.siteUrl.replace(/\/+$/, '');
+  const base = (baseUrl || config.siteUrl).replace(/\/+$/, '');
   return `${base}/invite/${token}`;
 }
 
@@ -38,6 +38,7 @@ export async function createInvitation(params: {
   maxAttendees: number;
   expiresAt?: string | null;
   createdById?: string | null;
+  baseUrl?: string | null;
   client?: SupabaseClient;
 }) {
   const adminClient = params.client || createAdminClient();
@@ -104,7 +105,7 @@ export async function createInvitation(params: {
 
   return {
     rawToken,
-    invitationUrl: buildInvitationUrl(rawToken),
+    invitationUrl: buildInvitationUrl(rawToken, params.baseUrl || undefined),
     invitation: invitation as InvitationRecord,
     guest: guest as GuestRecord,
   };
@@ -506,7 +507,12 @@ export async function updateInvitation(
   return updated;
 }
 
-export async function replaceInvitationToken(id: string, adminUserId?: string, client?: SupabaseClient) {
+export async function replaceInvitationToken(
+  id: string,
+  adminUserId?: string,
+  client?: SupabaseClient,
+  baseUrl?: string | null
+) {
   const adminClient = client || createAdminClient();
   const rawToken = generateSecureToken();
   const tokenHash = hashToken(rawToken);
@@ -538,7 +544,7 @@ export async function replaceInvitationToken(id: string, adminUserId?: string, c
 
   return {
     rawToken,
-    invitationUrl: buildInvitationUrl(rawToken),
+    invitationUrl: buildInvitationUrl(rawToken, baseUrl || undefined),
     invitation: updated,
   };
 }

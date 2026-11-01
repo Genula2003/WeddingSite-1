@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAdmin } from '@/lib/auth-service';
 import { createClient } from '@/lib/supabase/server';
 import { listInvitations, createInvitation } from '@/lib/invitation-service';
+import { resolveRequestBaseUrl } from '@/lib/supabase/env';
 
 export async function GET(req: NextRequest) {
   const admin = await getAuthenticatedAdmin();
@@ -58,6 +59,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invited attendees must be between 1 and 20' }, { status: 400 });
     }
 
+    const baseUrl = resolveRequestBaseUrl(req, body.baseUrl);
+
     const result = await createInvitation({
       fullName,
       householdName: body.householdName ? String(body.householdName).trim() : null,
@@ -68,6 +71,7 @@ export async function POST(req: NextRequest) {
       maxAttendees,
       expiresAt: body.expiresAt ? String(body.expiresAt) : null,
       createdById: admin.user.id,
+      baseUrl,
       client: supabase,
     });
 

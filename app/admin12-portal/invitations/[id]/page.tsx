@@ -51,6 +51,16 @@ export default function InvitationDetailsPage({
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
 
+  function normalizeInviteUrl(url: string): string {
+    if (!url) return '';
+    if (typeof window !== 'undefined' && window.location.origin) {
+      if (!window.location.origin.includes('localhost') && !window.location.origin.includes('127.0.0.1')) {
+        return url.replace(/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, window.location.origin);
+      }
+    }
+    return url;
+  }
+
   async function handleSendEmail() {
     if (!invitation?.guest?.email) return;
     setSendingEmail(true);
@@ -59,7 +69,10 @@ export default function InvitationDetailsPage({
       const res = await fetch(`/api/invitations/${id}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          baseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+          invitationUrl: replacementUrl ? normalizeInviteUrl(replacementUrl) : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to dispatch email');
@@ -109,7 +122,8 @@ export default function InvitationDetailsPage({
 
   async function handleCopy() {
     if (replacementUrl) {
-      await navigator.clipboard.writeText(replacementUrl);
+      const urlToCopy = normalizeInviteUrl(replacementUrl);
+      await navigator.clipboard.writeText(urlToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       return;
@@ -161,11 +175,17 @@ export default function InvitationDetailsPage({
       return;
     }
     try {
-      const res = await fetch(`/api/invitations/${id}/replace-token`, { method: 'POST' });
+      const clientBaseUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const res = await fetch(`/api/invitations/${id}/replace-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baseUrl: clientBaseUrl }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Replacement failed');
+      const normalized = normalizeInviteUrl(data.invitationUrl);
       setReplacementToken(data.rawToken);
-      setReplacementUrl(data.invitationUrl);
+      setReplacementUrl(normalized);
       loadDetails();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to replace token');
@@ -390,7 +410,7 @@ export default function InvitationDetailsPage({
               marginBottom: '10px',
             }}
           >
-            {replacementUrl}
+            {normalizeInviteUrl(replacementUrl)}
           </div>
           <button
             onClick={handleCopy}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAdmin } from '@/lib/auth-service';
 import { getInvitationDetails, recordInvitationEvent, buildInvitationUrl } from '@/lib/invitation-service';
 import { sendInvitationEmail } from '@/lib/email-service';
+import { resolveRequestBaseUrl } from '@/lib/supabase/env';
 
 export async function POST(
   req: NextRequest,
@@ -26,8 +27,9 @@ export async function POST(
 
     const body = await req.json().catch(() => ({}));
     const customMessage = body.customMessage ? String(body.customMessage).trim() : undefined;
+    const baseUrl = resolveRequestBaseUrl(req, body.baseUrl);
 
-    const publicUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/invite/details-${id}`;
+    const publicUrl = `${baseUrl}/invite/details-${id}`;
     const emailResult = await sendInvitationEmail({
       to: recipient,
       guestName: inv.guest.full_name,

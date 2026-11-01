@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAdmin } from '@/lib/auth-service';
 import { createClient } from '@/lib/supabase/server';
 import { replaceInvitationToken } from '@/lib/invitation-service';
+import { resolveRequestBaseUrl } from '@/lib/supabase/env';
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await getAuthenticatedAdmin();
@@ -14,8 +15,10 @@ export async function POST(
 
   const { id } = await params;
   try {
+    const body = await req.json().catch(() => ({}));
+    const baseUrl = resolveRequestBaseUrl(req, body.baseUrl);
     const supabase = await createClient();
-    const result = await replaceInvitationToken(id, admin.user.id, supabase);
+    const result = await replaceInvitationToken(id, admin.user.id, supabase, baseUrl);
     return NextResponse.json(result);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to replace invitation token';
